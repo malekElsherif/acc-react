@@ -78,7 +78,6 @@ const formatCurrency = (val?: number) =>
 const calculateTaxPercentage = (beforeTax?: number, tax?: number): string => {
   if (!beforeTax || beforeTax === 0 || !tax) return "0%";
   const percentage = (tax / beforeTax) * 100;
-  // تقريب الرقم لأقرب رقم صحيح أو عشري حسب الرغبة (مثلاً 15% أو 15.5%)
   return `${Number(percentage.toFixed(1))}%`;
 };
 
@@ -239,7 +238,6 @@ const Addfile: React.FC = () => {
   };
 
   const currentSupplier = suppliersData[selectedSupplierIndex];
-  const currentDate = new Date().toLocaleDateString("en-GB");
 
   return (
     <div
@@ -278,6 +276,7 @@ const Addfile: React.FC = () => {
             padding: 0;
           }
           .voucher-page {
+            position: relative;
             display: block !important;
             page-break-after: always !important;
             break-after: page !important;
@@ -286,23 +285,45 @@ const Addfile: React.FC = () => {
             margin: 0 auto 20px auto !important;
             padding: 10px 15px !important;
             box-sizing: border-box;
+            overflow: hidden;
+          }
+          .voucher-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 55%;
+            max-width: 320px;
+            opacity: 0.08;
+            z-index: 0;
+            pointer-events: none;
+          }
+          .voucher-watermark img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
           }
           .voucher-top-bar {
+            position: relative;
+            z-index: 1;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
             direction: rtl;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-size: 13px;
             font-weight: bold;
             color: #000;
           }
           .voucher-table {
+            position: relative;
+            z-index: 1;
             width: 100%;
             border-collapse: collapse;
             font-size: 11px;
             direction: rtl;
             table-layout: fixed;
+            background: transparent;
           }
           .voucher-table th, .voucher-table td {
             border: 1px solid #000 !important;
@@ -310,12 +331,13 @@ const Addfile: React.FC = () => {
             height: 20px;
             vertical-align: middle;
             word-wrap: break-word;
+            background: transparent;
           }
           .voucher-table th {
             font-weight: bold;
             text-align: center;
             color: #000;
-            background-color: #fff;
+            background-color: transparent;
           }
           .th-title-ar {
             display: block;
@@ -544,12 +566,15 @@ const Addfile: React.FC = () => {
 
                 return (
                   <div key={bIdx} className="voucher-page">
+                    {/* العلامة المائية - خلف محتوى الفاتورة بالكامل */}
+                    <div className="voucher-watermark">
+                      <img src="/Untitled-design-30.webp" alt="Logo watermark" />
+                    </div>
+
                     <div className="voucher-top-bar">
                       <div>
                         المورد : {currentSupplier.supplier_name} - {branch.branch_name}
                       </div>
-                      <div>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) : No</div>
-                      <div>Date : {currentDate}</div>
                     </div>
 
                     <table className="voucher-table">
