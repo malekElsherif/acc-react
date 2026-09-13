@@ -677,11 +677,11 @@ const Addfile: React.FC = () => {
                 const branchAfterTax =
                   branch.branch_total_after_tax ?? itemsList.reduce((acc, i) => acc + (i.amount_after_tax || 0), 0);
 
-                // التحقق من اسم الفرع لتحديد حساب الدائن ("الموردين" أو "حـ / العهده الإدارة") بدون كلمة "حساب" للموردين
+                // التحقق من اسم الفرع: إذا كان يحتوي على "المطبخ" أو "المركزي" يُصبح حساب الدائن "حـ/ الموردين"
                 const normalizedBranchName = normalizeText(branch.branch_name);
-                const isCentralKitchenBranch =
+                const isCentralKitchen =
                   normalizedBranchName.includes("المطبخ") || normalizedBranchName.includes("المركزي");
-                const creditAccountLabel = isCentralKitchenBranch ? "الموردين" : "حـ / العهده الإدارة";
+                const creditAccountLabel = isCentralKitchen ? "حـ/ الموردين" : "حـ/ العهده الإدارة";
 
                 return (
                   <div key={bIdx} className="voucher-page">
@@ -722,7 +722,7 @@ const Addfile: React.FC = () => {
                           <td></td>
                           <td></td>
                           <td className="txt-center bold-text">3</td>
-                          <td className="txt-right bold-text">حـ / مذكورين</td>
+                          <td className="txt-right bold-text">حـ/ مذكورين</td>
                         </tr>
 
                         {purchaseItems.length > 0 && (
@@ -731,7 +731,7 @@ const Addfile: React.FC = () => {
                               <td className="txt-center bold-text">{formatCurrency(totalPurchasesAmount)}</td>
                               <td></td>
                               <td className="txt-center">..</td>
-                              <td className="txt-right bold-text">حـ / المشتريات</td>
+                              <td className="txt-right bold-text">حـ/ المشتريات</td>
                             </tr>
                             {purchaseItems.map((item, idx) => (
                               <tr key={`p-${idx}`}>
@@ -771,7 +771,7 @@ const Addfile: React.FC = () => {
                           <td className="txt-center bold-text">{formatCurrency(branchTax)}</td>
                           <td></td>
                           <td className="txt-center">.</td>
-                          <td className="txt-right bold-text">حـ / الضريبه</td>
+                          <td className="txt-right bold-text">حـ/ الضريبه</td>
                         </tr>
 
                         <tr>
