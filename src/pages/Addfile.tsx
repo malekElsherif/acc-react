@@ -62,12 +62,6 @@ const styles = {
   },
   th: { padding: "10px 14px", border: "1px solid #cbd5e1" },
   td: { padding: "10px 14px", border: "1px solid #e2e8f0" },
-  infoBox: (borderColor: string) => ({
-    background: "#f8fafc",
-    padding: "16px",
-    borderRadius: 12,
-    border: `1px solid ${borderColor}`,
-  }),
 };
 
 const formatCurrency = (val?: number) =>
@@ -198,11 +192,10 @@ const Addfile: React.FC = () => {
 
   const [voucherDate, setVoucherDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
-  // حساب ترتيب الموردين بناءً على الإجمالي بعد الضريبة (أو قبل الضريبة) تنازلياً
+  // حساب ترتيب الموردين بناءً على الإجمالي بعد الضريبة تنازلياً
   const rankedSuppliers = useMemo(() => {
     if (!suppliersData.length) return [];
 
-    // حساب الإجماليات لكل مورد إذا لم تكن محسوبة مسبقاً
     const computed = suppliersData.map((sup, idx) => {
       const totalBefore = sup.total_amount_before_tax ?? sup.branches?.reduce((acc, b) => acc + (b.branch_total_before_tax ?? 0), 0) ?? 0;
       const totalTax = sup.total_tax_amount ?? sup.branches?.reduce((acc, b) => acc + (b.branch_total_tax ?? 0), 0) ?? 0;
@@ -219,13 +212,10 @@ const Addfile: React.FC = () => {
       };
     });
 
-    // الترتيب تنازلياً حسب الإجمالي بعد الضريبة
     computed.sort((a, b) => b.totalAfter - a.totalAfter);
-
     return computed;
   }, [suppliersData]);
 
-  // حساب ترتيب المورد الحالي بين الموردين
   const currentSupplierRankInfo = useMemo(() => {
     if (!suppliersData.length) return { rank: 0, totalCount: 0, data: null };
     const currentSupName = suppliersData[selectedSupplierIndex]?.supplier_name;
@@ -609,7 +599,7 @@ const Addfile: React.FC = () => {
                   </button>
                 </div>
 
-                {/* كارت ملخص إحصائيات المورد (Dev Box) */}
+                {/* كارت ملخص إحصائيات المورد */}
                 <div
                   style={{
                     background: "linear-gradient(135deg, #f8fafc 0% #f1f5f9 100%)",
@@ -687,6 +677,10 @@ const Addfile: React.FC = () => {
                 const branchTax = branch.branch_total_tax ?? itemsList.reduce((acc, i) => acc + (i.tax_amount || 0), 0);
                 const branchAfterTax =
                   branch.branch_total_after_tax ?? itemsList.reduce((acc, i) => acc + (i.amount_after_tax || 0), 0);
+
+                // التحقق مما إذا كان المورد هو "المطبخ المركزي" لاستبدال حساب العهدة بحساب الموردين
+                const isCentralKitchen = normalizeText(currentSupplier.supplier_name).includes("المطبخ المركزي");
+                const creditAccountLabel = isCentralKitchen ? "حـ / حساب الموردين" : "حـ / العهده الإدارة";
 
                 return (
                   <div key={bIdx} className="voucher-page">
@@ -799,7 +793,7 @@ const Addfile: React.FC = () => {
                           <td></td>
                           <td className="txt-center bold-text">{formatCurrency(branchAfterTax)}</td>
                           <td className="txt-center">.</td>
-                          <td className="txt-right bold-text">حـ / العهده الإدارة</td>
+                          <td className="txt-right bold-text">{creditAccountLabel}</td>
                         </tr>
 
                         <tr>
