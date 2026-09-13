@@ -192,7 +192,6 @@ const Addfile: React.FC = () => {
 
   const [voucherDate, setVoucherDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
-  // حساب ترتيب الموردين بناءً على الإجمالي بعد الضريبة تنازلياً
   const rankedSuppliers = useMemo(() => {
     if (!suppliersData.length) return [];
 
@@ -678,9 +677,11 @@ const Addfile: React.FC = () => {
                 const branchAfterTax =
                   branch.branch_total_after_tax ?? itemsList.reduce((acc, i) => acc + (i.amount_after_tax || 0), 0);
 
-                // التحقق مما إذا كان المورد هو "المطبخ المركزي" لاستبدال حساب العهدة بحساب الموردين
-                const isCentralKitchen = normalizeText(currentSupplier.supplier_name).includes("المطبخ المركزي");
-                const creditAccountLabel = isCentralKitchen ? "حـ / حساب الموردين" : "حـ / العهده الإدارة";
+                // التحقق من اسم الفرع لتحديد حساب الدائن ("الموردين" أو "حـ / العهده الإدارة") بدون كلمة "حساب" للموردين
+                const normalizedBranchName = normalizeText(branch.branch_name);
+                const isCentralKitchenBranch =
+                  normalizedBranchName.includes("المطبخ") || normalizedBranchName.includes("المركزي");
+                const creditAccountLabel = isCentralKitchenBranch ? "الموردين" : "حـ / العهده الإدارة";
 
                 return (
                   <div key={bIdx} className="voucher-page">
@@ -737,7 +738,9 @@ const Addfile: React.FC = () => {
                                 <td></td>
                                 <td></td>
                                 <td className="txt-center">{formatCurrency(item.amount_before_tax)}</td>
-                                <td className="txt-right">{item.details}</td>
+                                <td className="txt-right" style={{ paddingRight: "25px" }}>
+                                  &nbsp;&nbsp;&nbsp;{item.details}
+                                </td>
                               </tr>
                             ))}
                           </>
@@ -756,7 +759,9 @@ const Addfile: React.FC = () => {
                                 <td></td>
                                 <td></td>
                                 <td className="txt-center">{formatCurrency(item.amount_before_tax)}</td>
-                                <td className="txt-right">{item.details}</td>
+                                <td className="txt-right" style={{ paddingRight: "25px" }}>
+                                  &nbsp;&nbsp;&nbsp;{item.details}
+                                </td>
                               </tr>
                             ))}
                           </>
@@ -773,7 +778,9 @@ const Addfile: React.FC = () => {
                           <td></td>
                           <td></td>
                           <td className="txt-center">.</td>
-                          <td className="txt-right">Vat</td>
+                          <td className="txt-right" style={{ paddingRight: "25px" }}>
+                            &nbsp;&nbsp;&nbsp;Vat
+                          </td>
                         </tr>
 
                         <tr>
