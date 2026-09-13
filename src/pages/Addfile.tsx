@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import axios from "axios";
 import { uploadExcelFile } from "../api/axios";
 
@@ -51,22 +51,21 @@ interface SupplierData {
   branches: Branch[];
 }
 
-// ---------- أنماط مشتركة (لتقليل التكرار) ----------
 const styles = {
   card: {
     border: "1px solid #e2e8f0",
-    borderRadius: 10,
-    marginBottom: 12,
+    borderRadius: 12,
+    marginBottom: 16,
     background: "#fff",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.04)",
     overflow: "hidden" as const,
   },
-  th: { padding: "8px 12px", border: "1px solid #cbd5e1" },
-  td: { padding: "8px 12px", border: "1px solid #e2e8f0" },
+  th: { padding: "10px 14px", border: "1px solid #cbd5e1" },
+  td: { padding: "10px 14px", border: "1px solid #e2e8f0" },
   infoBox: (borderColor: string) => ({
     background: "#f8fafc",
     padding: "16px",
-    borderRadius: 10,
+    borderRadius: 12,
     border: `1px solid ${borderColor}`,
   }),
 };
@@ -74,104 +73,118 @@ const styles = {
 const formatCurrency = (val?: number) =>
   (val ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// دالة لحساب نسبة الضريبة بناءً على المبلغ قبل الضريبة وقيمة الضريبة
 const calculateTaxPercentage = (beforeTax?: number, tax?: number): string => {
   if (!beforeTax || beforeTax === 0 || !tax) return "0%";
   const percentage = (tax / beforeTax) * 100;
   return `${Number(percentage.toFixed(1))}%`;
 };
 
-// ---------- مكون فرعي: كارت الفرع (قسم الشاشة فقط) ----------
 const BranchCard: React.FC<{
   branch: Branch;
   isExpanded: boolean;
   onToggle: () => void;
-}> = ({ branch, isExpanded, onToggle }) => (
-  <div style={styles.card}>
-    <div
-      onClick={onToggle}
-      style={{
-        padding: 16,
-        cursor: "pointer",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        backgroundColor: isExpanded ? "#f8fafc" : "#fff",
-        transition: "background-color 0.2s",
-      }}
-    >
-      <div>
-        <strong style={{ color: "#0f172a", fontSize: 16 }}>🏢 فرع: {branch.branch_name}</strong>
-        <div style={{ marginTop: 6, color: "#475569", fontSize: 14 }}>
-          صافي المشتريات والتشغيل: <b>{formatCurrency(branch.branch_total_before_tax)}</b> | الضريبة:{" "}
-          <b>{formatCurrency(branch.branch_total_tax)}</b> | الإجمالي:{" "}
-          <b>{formatCurrency(branch.branch_total_after_tax)}</b>
-        </div>
-      </div>
-      <div style={{ fontSize: 18, color: "#64748b", fontWeight: "bold" }}>{isExpanded ? "▲" : "▼"}</div>
-    </div>
+  searchTerm: string;
+}> = ({ branch, isExpanded, onToggle, searchTerm }) => {
+  const filteredItems = useMemo(() => {
+    if (!branch.items) return [];
+    if (!searchTerm.trim()) return branch.items;
+    return branch.items.filter((item) =>
+      item.details.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [branch.items, searchTerm]);
 
-    {isExpanded && (
-      <div style={{ padding: 16, borderTop: "1px solid #e2e8f0", background: "#fff" }}>
-        {branch.items && branch.items.length > 0 ? (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "right" }}>
-            <thead>
-              <tr style={{ backgroundColor: "#f1f5f9", color: "#334155" }}>
-                {[
-                  "#",
-                  "البيان / الصنف",
-                  "النوع",
-                  "الكمية",
-                  "المبلغ قبل الضريبة",
-                  "الضريبة",
-                  "نسبة الضريبة",
-                  "المبلغ بعد الضريبة",
-                ].map((h) => (
-                  <th key={h} style={styles.th}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {branch.items.map((item, idx) => {
-                const isPurchase = PURCHASE_CATEGORIES.has(normalizeText(item.details));
-                const taxPercentage = calculateTaxPercentage(item.amount_before_tax, item.tax_amount);
-                return (
-                  <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                    <td style={styles.td}>{idx + 1}</td>
-                    <td style={{ ...styles.td, fontWeight: 600 }}>{item.details}</td>
-                    <td style={styles.td}>
-                      <span
-                        style={{
-                          padding: "3px 8px",
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: "bold",
-                          backgroundColor: isPurchase ? "#dcfce7" : "#feefc3",
-                          color: isPurchase ? "#15803d" : "#b45309",
-                        }}
-                      >
-                        {isPurchase ? "مشتريات" : "مصروف تشغيل"}
-                      </span>
-                    </td>
-                    <td style={styles.td}>{item.quantity}</td>
-                    <td style={styles.td}>{formatCurrency(item.amount_before_tax)}</td>
-                    <td style={styles.td}>{formatCurrency(item.tax_amount)}</td>
-                    <td style={{ ...styles.td, fontWeight: 600, color: "#0284c7" }}>{taxPercentage}</td>
-                    <td style={styles.td}>{formatCurrency(item.amount_after_tax)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        ) : (
-          <div style={{ color: "#94a3b8", fontSize: 13 }}>لا توجد تفاصيل بنود متاحة لهذا الفرع.</div>
-        )}
+  return (
+    <div style={styles.card}>
+      <div
+        onClick={onToggle}
+        style={{
+          padding: 18,
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          backgroundColor: isExpanded ? "#f8fafc" : "#fff",
+          transition: "background-color 0.2s",
+        }}
+      >
+        <div>
+          <strong style={{ color: "#0f172a", fontSize: 16 }}>🏢 فرع: {branch.branch_name}</strong>
+          <div style={{ marginTop: 6, color: "#475569", fontSize: 14 }}>
+            عدد العمليات: <b>{branch.total_transactions ?? branch.items?.length ?? 0}</b> | صافي المشتريات:{" "}
+            <b>{formatCurrency(branch.branch_total_before_tax)}</b> | الضريبة:{" "}
+            <b>{formatCurrency(branch.branch_total_tax)}</b> | الإجمالي:{" "}
+            <b>{formatCurrency(branch.branch_total_after_tax)}</b>
+          </div>
+        </div>
+        <div style={{ fontSize: 16, color: "#64748b", fontWeight: "bold" }}>{isExpanded ? "▲" : "▼"}</div>
       </div>
-    )}
-  </div>
-);
+
+      {isExpanded && (
+        <div style={{ padding: 18, borderTop: "1px solid #e2e8f0", background: "#fff" }}>
+          {filteredItems.length > 0 ? (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "right" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#f1f5f9", color: "#334155" }}>
+                    {[
+                      "#",
+                      "البيان / الصنف",
+                      "النوع",
+                      "الكمية",
+                      "المبلغ قبل الضريبة",
+                      "الضريبة",
+                      "نسبة الضريبة",
+                      "المبلغ بعد الضريبة",
+                    ].map((h) => (
+                      <th key={h} style={styles.th}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.map((item, idx) => {
+                    const isPurchase = PURCHASE_CATEGORIES.has(normalizeText(item.details));
+                    const taxPercentage = calculateTaxPercentage(item.amount_before_tax, item.tax_amount);
+                    return (
+                      <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f8fafc" }}>
+                        <td style={styles.td}>{idx + 1}</td>
+                        <td style={{ ...styles.td, fontWeight: 600 }}>{item.details}</td>
+                        <td style={styles.td}>
+                          <span
+                            style={{
+                              padding: "4px 10px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: "bold",
+                              backgroundColor: isPurchase ? "#dcfce7" : "#feefc3",
+                              color: isPurchase ? "#15803d" : "#b45309",
+                            }}
+                          >
+                            {isPurchase ? "مشتريات" : "مصروف تشغيل"}
+                          </span>
+                        </td>
+                        <td style={styles.td}>{item.quantity}</td>
+                        <td style={styles.td}>{formatCurrency(item.amount_before_tax)}</td>
+                        <td style={styles.td}>{formatCurrency(item.tax_amount)}</td>
+                        <td style={{ ...styles.td, fontWeight: 600, color: "#0284c7" }}>{taxPercentage}</td>
+                        <td style={styles.td}>{formatCurrency(item.amount_after_tax)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ color: "#94a3b8", fontSize: 13, textAlign: "center", padding: "15px 0" }}>
+              لا توجد بنود مطابقة للبحث داخل هذا الفرع.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Addfile: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -181,9 +194,49 @@ const Addfile: React.FC = () => {
   const [selectedSupplierIndex, setSelectedSupplierIndex] = useState<number>(0);
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [expandedBranches, setExpandedBranches] = useState<Record<number, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // حالة لحفظ التاريخ المدخل من قبل المستخدم
-  const [voucherDate, setVoucherDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [voucherDate, setVoucherDate] = useState<string>(new Date().toISOString().split("T")[0]);
+
+  // حساب ترتيب الموردين بناءً على الإجمالي بعد الضريبة (أو قبل الضريبة) تنازلياً
+  const rankedSuppliers = useMemo(() => {
+    if (!suppliersData.length) return [];
+
+    // حساب الإجماليات لكل مورد إذا لم تكن محسوبة مسبقاً
+    const computed = suppliersData.map((sup, idx) => {
+      const totalBefore = sup.total_amount_before_tax ?? sup.branches?.reduce((acc, b) => acc + (b.branch_total_before_tax ?? 0), 0) ?? 0;
+      const totalTax = sup.total_tax_amount ?? sup.branches?.reduce((acc, b) => acc + (b.branch_total_tax ?? 0), 0) ?? 0;
+      const totalAfter = sup.total_amount_after_tax ?? sup.branches?.reduce((acc, b) => acc + (b.branch_total_after_tax ?? 0), 0) ?? 0;
+      const totalTx = sup.branches?.reduce((acc, b) => acc + (b.total_transactions ?? b.items?.length ?? 0), 0) ?? 0;
+
+      return {
+        originalIndex: idx,
+        supplier_name: sup.supplier_name,
+        totalBefore,
+        totalTax,
+        totalAfter,
+        totalTx,
+      };
+    });
+
+    // الترتيب تنازلياً حسب الإجمالي بعد الضريبة
+    computed.sort((a, b) => b.totalAfter - a.totalAfter);
+
+    return computed;
+  }, [suppliersData]);
+
+  // حساب ترتيب المورد الحالي بين الموردين
+  const currentSupplierRankInfo = useMemo(() => {
+    if (!suppliersData.length) return { rank: 0, totalCount: 0, data: null };
+    const currentSupName = suppliersData[selectedSupplierIndex]?.supplier_name;
+    const rankIndex = rankedSuppliers.findIndex((s) => s.supplier_name === currentSupName);
+
+    return {
+      rank: rankIndex !== -1 ? rankIndex + 1 : 1,
+      totalCount: rankedSuppliers.length,
+      data: rankedSuppliers.find((s) => s.supplier_name === currentSupName),
+    };
+  }, [rankedSuppliers, selectedSupplierIndex, suppliersData]);
 
   const toggleBranch = (index: number) =>
     setExpandedBranches((prev) => ({ ...prev, [index]: !prev[index] }));
@@ -246,7 +299,7 @@ const Addfile: React.FC = () => {
     <div
       style={{
         padding: "30px 20px",
-        maxWidth: 1050,
+        maxWidth: 1100,
         margin: "auto",
         direction: "rtl",
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
@@ -410,7 +463,7 @@ const Addfile: React.FC = () => {
                   <div style={{ fontSize: 42, marginBottom: 10 }}>📊</div>
                   <div style={{ fontSize: 16, fontWeight: 600, color: "#0f172a" }}>{file.name}</div>
                   <div style={{ fontSize: 13, color: "#10b981", marginTop: 4, fontWeight: 500 }}>
-                    جاهز للرفع والتفقيط ({(file.size / 1024).toFixed(1)} KB)
+                    جاهز للرفع والمعالجة ({(file.size / 1024).toFixed(1)} KB)
                   </div>
                 </div>
               ) : (
@@ -469,37 +522,34 @@ const Addfile: React.FC = () => {
             {responseMessage}
           </div>
         )}
-
-        {suppliersData.length === 0 && !loading && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 15, marginTop: 40 }}>
-            {[
-              ["1. رفع الملف", 'اختر شيت الأكسيل المحتوي على شيت "المدخلات" و"قيد".'],
-              ["2. التبويب التلقائي", "سيقوم النظام بتصنيف البنود بين المشتريات ومصروفات التشغيل."],
-              ["3. المعاينة والطباعة", "استعراض حسابات الفروع وإمكانية طباعة إيصالات معتمدة ومصغرة."],
-            ].map(([title, desc]) => (
-              <div key={title} style={styles.infoBox("#e2e8f0")}>
-                <div style={{ fontWeight: "bold", color: "#1e293b", marginBottom: 5 }}>{title}</div>
-                <div style={{ fontSize: 13, color: "#64748b" }}>{desc}</div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {suppliersData.length > 0 && (
         <div style={{ marginTop: 35 }}>
-          {/* تحكم تاريخ الفاتورة الموحد */}
-          <div className="no-print" style={{ background: "#f8fafc", padding: "15px 20px", borderRadius: 10, border: "1px solid #cbd5e1", marginBottom: 20, display: "flex", alignItems: "center", gap: 15 }}>
-            <label htmlFor="voucherDateInput" style={{ fontWeight: 600, color: "#1e293b", fontSize: 14 }}>
-              📅 تاريخ الفواتير المراد طباعتها:
-            </label>
-            <input
-              id="voucherDateInput"
-              type="date"
-              value={voucherDate}
-              onChange={(e) => setVoucherDate(e.target.value)}
-              style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #94a3b8", fontSize: 14, outline: "none", cursor: "pointer" }}
-            />
+          {/* تحكم تاريخ الفاتورة والبحث */}
+          <div className="no-print" style={{ background: "#f8fafc", padding: "18px 20px", borderRadius: 12, border: "1px solid #cbd5e1", marginBottom: 20, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 15 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <label htmlFor="voucherDateInput" style={{ fontWeight: 600, color: "#1e293b", fontSize: 14 }}>
+                📅 تاريخ الفواتير للطباعة:
+              </label>
+              <input
+                id="voucherDateInput"
+                type="date"
+                value={voucherDate}
+                onChange={(e) => setVoucherDate(e.target.value)}
+                style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #94a3b8", fontSize: 14, outline: "none", cursor: "pointer" }}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <input
+                type="text"
+                placeholder="🔍 بحث عن بند أو صنف..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid #94a3b8", fontSize: 14, outline: "none", width: 220 }}
+              />
+            </div>
           </div>
 
           <div
@@ -540,8 +590,8 @@ const Addfile: React.FC = () => {
           {currentSupplier && (
             <div>
               <div className="screen-view">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                  <h3 style={{ margin: 0, color: "#1e293b" }}>بيانات المورد: {currentSupplier.supplier_name}</h3>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
+                  <h3 style={{ margin: 0, color: "#1e293b", fontSize: 20 }}>بيانات المورد: {currentSupplier.supplier_name}</h3>
                   <button
                     onClick={() => window.print()}
                     style={{
@@ -559,8 +609,65 @@ const Addfile: React.FC = () => {
                   </button>
                 </div>
 
+                {/* كارت ملخص إحصائيات المورد (Dev Box) */}
+                <div
+                  style={{
+                    background: "linear-gradient(135deg, #f8fafc 0% #f1f5f9 100%)",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: 12,
+                    padding: "20px",
+                    marginBottom: 25,
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 14, borderBottom: "1px solid #e2e8f0", paddingBottom: 10 }}>
+                    <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 16 }}>
+                      📊 إحصائيات وتعاملات المورد الإجمالية
+                    </div>
+                    <div style={{ background: "#e0f2fe", color: "#0369a1", padding: "6px 14px", borderRadius: 20, fontSize: 13, fontWeight: "bold" }}>
+                      🏆 ترتيب المورد: رقم {currentSupplierRankInfo.rank} من أصل {currentSupplierRankInfo.totalCount} موردين
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 15 }}>
+                    <div style={{ background: "#fff", padding: "12px 16px", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>إجمالي العمليات:</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
+                        {currentSupplierRankInfo.data?.totalTx ?? 0} عملية
+                      </div>
+                    </div>
+
+                    <div style={{ background: "#fff", padding: "12px 16px", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>الإجمالي قبل الضريبة:</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#0284c7" }}>
+                        {formatCurrency(currentSupplierRankInfo.data?.totalBefore)}
+                      </div>
+                    </div>
+
+                    <div style={{ background: "#fff", padding: "12px 16px", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>إجمالي قيمة الضريبة:</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#d97706" }}>
+                        {formatCurrency(currentSupplierRankInfo.data?.totalTax)}
+                      </div>
+                    </div>
+
+                    <div style={{ background: "#fff", padding: "12px 16px", borderRadius: 8, border: "1px solid #e2e8f0" }}>
+                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>الإجمالي بعد الضريبة:</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: "#16a34a" }}>
+                        {formatCurrency(currentSupplierRankInfo.data?.totalAfter)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {currentSupplier.branches?.map((b, i) => (
-                  <BranchCard key={i} branch={b} isExpanded={!!expandedBranches[i]} onToggle={() => toggleBranch(i)} />
+                  <BranchCard
+                    key={i}
+                    branch={b}
+                    isExpanded={!!expandedBranches[i]}
+                    onToggle={() => toggleBranch(i)}
+                    searchTerm={searchTerm}
+                  />
                 ))}
               </div>
 
@@ -583,7 +690,6 @@ const Addfile: React.FC = () => {
 
                 return (
                   <div key={bIdx} className="voucher-page">
-                    {/* العلامة المائية - خلف محتوى الفاتورة بالكامل */}
                     <div className="voucher-watermark">
                       <img src="/Untitled-design-30.webp" alt="Logo watermark" />
                     </div>
@@ -592,9 +698,7 @@ const Addfile: React.FC = () => {
                       <div>
                         المورد : {currentSupplier.supplier_name} - {branch.branch_name}
                       </div>
-                      <div>
-                        التاريخ: {voucherDate}
-                      </div>
+                      <div>التاريخ: {voucherDate}</div>
                     </div>
 
                     <table className="voucher-table">
