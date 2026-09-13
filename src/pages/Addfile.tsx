@@ -738,8 +738,8 @@ const Addfile: React.FC = () => {
                                 <td></td>
                                 <td></td>
                                 <td className="txt-center">{formatCurrency(item.amount_before_tax)}</td>
-                                <td className="txt-right" style={{ paddingRight: "25px" }}>
-                                  &nbsp;&nbsp;&nbsp;{item.details}
+                                <td className="txt-right" style={{ paddingRight: "35px" }}>
+                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{item.details}
                                 </td>
                               </tr>
                             ))}
@@ -759,8 +759,8 @@ const Addfile: React.FC = () => {
                                 <td></td>
                                 <td></td>
                                 <td className="txt-center">{formatCurrency(item.amount_before_tax)}</td>
-                                <td className="txt-right" style={{ paddingRight: "25px" }}>
-                                  &nbsp;&nbsp;&nbsp;{item.details}
+                                <td className="txt-right" style={{ paddingRight: "35px" }}>
+                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{item.details}
                                 </td>
                               </tr>
                             ))}
@@ -778,22 +778,9 @@ const Addfile: React.FC = () => {
                           <td></td>
                           <td></td>
                           <td className="txt-center">.</td>
-                          <td className="txt-right" style={{ paddingRight: "25px" }}>
-                            &nbsp;&nbsp;&nbsp;Vat
+                          <td className="txt-right" style={{ paddingRight: "35px" }}>
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Vat
                           </td>
-                        </tr>
-
-                        <tr>
-                          <td></td>
-                          <td></td>
-                          <td className="txt-center">.</td>
-                          <td></td>
-                        </tr>
-                        <tr>
-                          <td></td>
-                          <td></td>
-                          <td className="txt-center">.</td>
-                          <td></td>
                         </tr>
 
                         <tr>
