@@ -182,6 +182,9 @@ const Addfile: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [expandedBranches, setExpandedBranches] = useState<Record<number, boolean>>({});
 
+  // حالة لحفظ التاريخ المدخل من قبل المستخدم
+  const [voucherDate, setVoucherDate] = useState<string>(new Date().toISOString().split('T')[0]);
+
   const toggleBranch = (index: number) =>
     setExpandedBranches((prev) => ({ ...prev, [index]: !prev[index] }));
 
@@ -307,7 +310,7 @@ const Addfile: React.FC = () => {
             position: relative;
             z-index: 1;
             display: flex;
-            justify-content: flex-start;
+            justify-content: space-between;
             align-items: center;
             direction: rtl;
             margin-bottom: 8px;
@@ -485,6 +488,20 @@ const Addfile: React.FC = () => {
 
       {suppliersData.length > 0 && (
         <div style={{ marginTop: 35 }}>
+          {/* تحكم تاريخ الفاتورة الموحد */}
+          <div className="no-print" style={{ background: "#f8fafc", padding: "15px 20px", borderRadius: 10, border: "1px solid #cbd5e1", marginBottom: 20, display: "flex", alignItems: "center", gap: 15 }}>
+            <label htmlFor="voucherDateInput" style={{ fontWeight: 600, color: "#1e293b", fontSize: 14 }}>
+              📅 تاريخ الفواتير المراد طباعتها:
+            </label>
+            <input
+              id="voucherDateInput"
+              type="date"
+              value={voucherDate}
+              onChange={(e) => setVoucherDate(e.target.value)}
+              style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #94a3b8", fontSize: 14, outline: "none", cursor: "pointer" }}
+            />
+          </div>
+
           <div
             className="no-print"
             style={{
@@ -574,6 +591,9 @@ const Addfile: React.FC = () => {
                     <div className="voucher-top-bar">
                       <div>
                         المورد : {currentSupplier.supplier_name} - {branch.branch_name}
+                      </div>
+                      <div>
+                        التاريخ: {voucherDate}
                       </div>
                     </div>
 
