@@ -35,7 +35,7 @@ export const uploadExcelFile = async (file: File, voucherDate: string) => {
 };
 
 // 2. دالة لتحميل ملف الإكسيل مباشرة عند الضغط على زر التحميل
-export const downloadExcelFile = (excelFileObj) => {
+export const downloadExcelFile = (excelFileObj:any) => {
   if (!excelFileObj || !excelFileObj.base64) {
     console.error("ملف الإكسيل غير متوفر");
     return;
