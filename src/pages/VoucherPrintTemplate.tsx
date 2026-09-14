@@ -141,13 +141,13 @@ export const VoucherPrintTemplate: React.FC<VoucherPrintTemplateProps> = ({ curr
             <td className="border border-black p-[3px_6px] h-5 align-middle break-words bg-transparent text-right font-bold">{creditAccountLabel}</td>
           </tr>
 
-          {/* الصف الذي كان فارغاً، تم وضع اسم المورد فيه الآن */}
+          {/* صف فارغ تحت العهدة/الموردين */}
           <tr>
             <td className="border border-black p-[3px_6px] h-5 align-middle break-words bg-transparent"></td>
             <td className="border border-black p-[3px_6px] h-5 align-middle break-words bg-transparent"></td>
             <td className="border border-black p-[3px_6px] h-5 align-middle break-words bg-transparent text-center">.</td>
             <td className="border border-black p-[3px_6px] h-5 align-middle break-words bg-transparent text-right pr-[35px]">
-              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{currentSupplier.supplier_name}
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             </td>
           </tr>
 
