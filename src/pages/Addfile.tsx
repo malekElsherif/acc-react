@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import axios from "axios";
-import { uploadExcelFile } from "../api/axios";
+import { uploadExcelFile, downloadExcelFile } from "../api/axios";
 import { type SupplierData, formatCurrency } from "../typesAndConstants";
 import { BranchCard } from "./BranchCard";
 import { VoucherPrintTemplate } from "./VoucherPrintTemplate";
@@ -14,6 +14,9 @@ const Addfile: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState<boolean>(false);
   const [expandedBranches, setExpandedBranches] = useState<Record<number, boolean>>({});
   const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // State خاصة بحفظ ملف الإكسيل القادم من السيرفر
+  const [excelFileObj, setExcelFileObj] = useState<any>(null);
 
   const [voucherDate, setVoucherDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
@@ -90,8 +93,13 @@ const Addfile: React.FC = () => {
     setLoading(true);
     setResponseMessage("");
     try {
-      const data = await uploadExcelFile(file);
-      setSuppliersData(data || []);
+      // تم تعديل الاستدعاء هنا لتمرير voucherDate بجانب الملف
+      const result = await uploadExcelFile(file, voucherDate);
+
+      // استقبال البيانات وتوزيعها على الـ States
+      setSuppliersData(result.tableData || []);
+      setExcelFileObj(result.excelFile || null); // حفظ ملف الإكسيل
+
       setSelectedSupplierIndex(0);
       setExpandedBranches({});
       setResponseMessage("تم رفع الملف ومعالجة البيانات بنجاح!");
@@ -111,7 +119,7 @@ const Addfile: React.FC = () => {
 
   return (
     <div className="p-8 max-w-6xl mx-auto rtl font-sans">
-      {/* منطقة رفع الملفات (تختفي عند الطباعة باستخدام print:hidden من تايلويند) */}
+      {/* منطقة رفع الملفات */}
       <div className="print:hidden">
         <div className="text-center mb-8">
           <h2 className="text-slate-800 m-0 mb-2 text-3xl font-bold">
@@ -245,14 +253,26 @@ const Addfile: React.FC = () => {
 
               {/* واجهة العرض على الشاشة (تختفي عند الطباعة) */}
               <div className="print:hidden">
-                <div className="flex justify-between items-center mb-5">
+                <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
                   <h3 className="m-0 text-slate-800 text-xl font-bold">بيانات المورد: {currentSupplier.supplier_name}</h3>
-                  <button
-                    onClick={() => window.print()}
-                    className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl font-semibold cursor-pointer shadow-md shadow-emerald-600/20 transition-all"
-                  >
-                    🖨️ طباعة إيصالات الفروع
-                  </button>
+
+                  <div className="flex items-center gap-3">
+                    {/* زر تحميل ملف الإكسيل الجديد */}
+                    <button
+                      onClick={() => downloadExcelFile(excelFileObj)}
+                      className="py-2.5 px-5 bg-sky-600 hover:bg-sky-700 text-white border-none rounded-xl font-semibold cursor-pointer shadow-md shadow-sky-600/20 transition-all flex items-center gap-2"
+                    >
+                      📥 تحميل ملف المشتريات (Excel)
+                    </button>
+
+                    {/* زر الطباعة */}
+                    <button
+                      onClick={() => window.print()}
+                      className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl font-semibold cursor-pointer shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2"
+                    >
+                      🖨️ طباعة إيصالات الفروع
+                    </button>
+                  </div>
                 </div>
 
                 {/* كارت ملخص إحصائيات المورد */}
@@ -308,7 +328,7 @@ const Addfile: React.FC = () => {
                 ))}
               </div>
 
-              {/* نماذج الفواتير الخاصة بالطباعة (تظهر فقط عند الطباعة باستخدام نظام Tailwind للـ Print) */}
+              {/* نماذج الفواتير الخاصة بالطباعة */}
               <div className="hidden print:block">
                 {currentSupplier.branches?.map((branch, bIdx) => (
                   <VoucherPrintTemplate
