@@ -14,7 +14,7 @@ export const uploadExcelFile = async (file: File, voucherDate: string) => {
   formData.append("voucherDate", voucherDate); // إرسال التاريخ المحدد من الواجهة
 
   const response = await api.post(
-    "/webhook-test/4fb8bbaf-d7ff-48a6-9549-e824c194823b",
+    "/webhook/4fb8bbaf-d7ff-48a6-9549-e824c194823b",
     formData
   );
 
