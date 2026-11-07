@@ -44,6 +44,12 @@ export interface SupplierData {
   total_tax_amount?: number;
   total_amount_after_tax?: number;
   branches: Branch[];
+  // في SupplierData
+  warnings?: any[];
+  audit_summary?: { errors: number; warnings: number; status: string };
+
+  // في Branch
+  audit?: { status: string; tax_diff: number; after_tax_diff: number; expected_tax: number };
 }
 
 export const formatCurrency = (val?: number) =>

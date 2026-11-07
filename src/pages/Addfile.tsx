@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
-import { uploadExcelFile, downloadExcelFile } from "../api/axios";
+import { uploadExcelFile } from "../api/axios";
 import { type SupplierData, formatCurrency } from "../typesAndConstants";
 import { BranchCard } from "./BranchCard";
-import { VoucherPrintTemplate } from "./VoucherPrintTemplate";
+import { VoucherPrintTemplate, AllVouchersPrint } from "./VoucherPrintTemplate";
+import WarnFakeData from "./WarnFakeData";
 
 const Addfile: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -15,10 +16,34 @@ const Addfile: React.FC = () => {
   const [expandedBranches, setExpandedBranches] = useState<Record<number, boolean>>({});
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // State خاصة بحفظ ملف الإكسيل القادم من السيرفر
-  const [excelFileObj, setExcelFileObj] = useState<any>(null);
-
   const [voucherDate, setVoucherDate] = useState<string>(new Date().toISOString().split("T")[0]);
+
+  // ===== وضع الطباعة: المورد الحالي أو كل الموردين =====
+  const [printMode, setPrintMode] = useState<"current" | "all">("current");
+  const [printRequest, setPrintRequest] = useState<number>(0);
+
+  const requestPrint = (mode: "current" | "all") => {
+    setPrintMode(mode);
+    setPrintRequest((n) => n + 1);
+  };
+
+  // بعد ما React يرسم القيود نطبع، وبعد الطباعة نرجع للوضع العادي
+  useEffect(() => {
+    if (printRequest === 0) return;
+    const onAfterPrint = () => setPrintMode("current");
+    window.addEventListener("afterprint", onAfterPrint);
+    const t = setTimeout(() => window.print(), 150);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("afterprint", onAfterPrint);
+    };
+  }, [printRequest]);
+
+  // الموردين اللي ليهم فروع فقط (يتخطى صف "لا توجد بيانات مطابقة")
+  const printableSuppliers = useMemo(
+    () => suppliersData.filter((s) => (s.branches?.length ?? 0) > 0),
+    [suppliersData]
+  );
 
   const rankedSuppliers = useMemo(() => {
     if (!suppliersData.length) return [];
@@ -93,12 +118,9 @@ const Addfile: React.FC = () => {
     setLoading(true);
     setResponseMessage("");
     try {
-      // تم تعديل الاستدعاء هنا لتمرير voucherDate بجانب الملف
       const result = await uploadExcelFile(file, voucherDate);
 
-      // استقبال البيانات وتوزيعها على الـ States
       setSuppliersData(result.tableData || []);
-      setExcelFileObj(result.excelFile || null); // حفظ ملف الإكسيل
 
       setSelectedSupplierIndex(0);
       setExpandedBranches({});
@@ -256,21 +278,26 @@ const Addfile: React.FC = () => {
                 <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
                   <h3 className="m-0 text-slate-800 text-xl font-bold">بيانات المورد: {currentSupplier.supplier_name}</h3>
 
-                  <div className="flex items-center gap-3">
-                    {/* زر تحميل ملف الإكسيل الجديد */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* طباعة المورد الحالي */}
                     <button
-                      onClick={() => downloadExcelFile(excelFileObj)}
-                      className="py-2.5 px-5 bg-sky-600 hover:bg-sky-700 text-white border-none rounded-xl font-semibold cursor-pointer shadow-md shadow-sky-600/20 transition-all flex items-center gap-2"
-                    >
-                      📥 تحميل ملف المشتريات (Excel)
-                    </button>
-
-                    {/* زر الطباعة */}
-                    <button
-                      onClick={() => window.print()}
+                      onClick={() => requestPrint("current")}
                       className="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white border-none rounded-xl font-semibold cursor-pointer shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2"
                     >
                       🖨️ طباعة إيصالات الفروع
+                    </button>
+
+                    {/* طباعة كل الموردين مرة واحدة */}
+                    <button
+                      onClick={() => requestPrint("all")}
+                      disabled={printableSuppliers.length === 0}
+                      className={`py-2.5 px-5 text-white border-none rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                        printableSuppliers.length === 0
+                          ? "bg-slate-400 cursor-not-allowed"
+                          : "bg-indigo-600 hover:bg-indigo-700 cursor-pointer shadow-md shadow-indigo-600/20"
+                      }`}
+                    >
+                      🖨️ طباعة كل الموردين ({printableSuppliers.length})
                     </button>
                   </div>
                 </div>
@@ -317,6 +344,14 @@ const Addfile: React.FC = () => {
                   </div>
                 </div>
 
+                {/* فحص التلاعب والحسابات (ضريبة 5%) */}
+                <WarnFakeData
+                  supplierName={currentSupplier.supplier_name}
+                  warnings={currentSupplier.warnings}
+                  summary={currentSupplier.audit_summary}
+                  branches={currentSupplier.branches}
+                />
+
                 {currentSupplier.branches?.map((b, i) => (
                   <BranchCard
                     key={i}
@@ -330,15 +365,20 @@ const Addfile: React.FC = () => {
 
               {/* نماذج الفواتير الخاصة بالطباعة */}
               <div className="hidden print:block">
-                {currentSupplier.branches?.map((branch, bIdx) => (
-                  <VoucherPrintTemplate
-                    key={bIdx}
-                    currentSupplier={currentSupplier}
-                    branch={branch}
-                    bIdx={bIdx}
-                    voucherDate={voucherDate}
-                  />
-                ))}
+                {printMode === "all" ? (
+                  <AllVouchersPrint suppliers={printableSuppliers} voucherDate={voucherDate} />
+                ) : (
+                  currentSupplier.branches?.map((branch, bIdx) => (
+                    <VoucherPrintTemplate
+                      key={bIdx}
+                      currentSupplier={currentSupplier}
+                      branch={branch}
+                      bIdx={bIdx}
+                      voucherDate={voucherDate}
+                      isLast={bIdx === (currentSupplier.branches?.length ?? 0) - 1}
+                    />
+                  ))
+                )}
               </div>
             </div>
           )}
